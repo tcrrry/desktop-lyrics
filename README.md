@@ -7,7 +7,7 @@
 
 Android floating lyrics overlay with MediaSession playback detection, synchronized lyrics, fluid resizing, and dynamic album-color backgrounds.
 
-[下载最新版](https://github.com/tcrrry/desktop-lyrics/releases/latest) · [English](./README_EN.md) · [隐私说明](./PRIVACY.md) · [更新记录](./CHANGELOG.md)
+[B站视频演示](https://www.bilibili.com/video/BV1jNu66eEkr/) · [下载最新版](https://github.com/tcrrry/desktop-lyrics/releases/latest) · [English](./README_EN.md) · [隐私说明](./PRIVACY.md) · [更新记录](./CHANGELOG.md)
 
 [![Latest Release](https://img.shields.io/github/v/release/tcrrry/desktop-lyrics?display_name=tag&sort=semver&label=release)](https://github.com/tcrrry/desktop-lyrics/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/tcrrry/desktop-lyrics/total?label=downloads)](https://github.com/tcrrry/desktop-lyrics/releases)
@@ -20,6 +20,12 @@ Android floating lyrics overlay with MediaSession playback detection, synchroniz
 桌面歌词是一款本地实时同步的 Android 歌词悬浮窗。它直接读取播放器公开的 Android MediaSession；在授予桌面歌词“通知使用权”后，即使关闭音乐软件自身的通知展示，也能持续获取当前歌曲和播放进度。
 
 应用按需直连公共歌词源，不依赖自建服务器，也不经过 `tcrrry.com`。它把同步歌词、自由缩放、单行紧凑模式、手动歌词浏览和专辑色动态背景整合在一个应用中。
+
+## 视频演示
+
+[![可能是最精致的安卓桌面歌词软件｜Apple Music / Spotify 实时悬浮显示](./docs/assets/desktop-lyrics-cover.jpg)](https://www.bilibili.com/video/BV1jNu66eEkr/)
+
+点击封面或前往 B站观看：[可能是最精致的安卓桌面歌词软件｜Apple Music / Spotify 实时悬浮显示](https://www.bilibili.com/video/BV1jNu66eEkr/)。
 
 ## 核心功能
 
