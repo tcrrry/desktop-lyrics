@@ -17,11 +17,11 @@
 
 Desktop Lyrics is a real-time Android floating lyrics overlay. It reads the active player's public Android MediaSession locally, so it can keep receiving track metadata and playback progress even when the player's own notification is hidden. Notification access must still be granted to Desktop Lyrics itself.
 
-The app queries public lyrics providers directly. It does not require a private backend and does not route requests through `tcrrry.com`.
+The app queries public lyrics providers directly and does not require a private backend.
 
 ## Video demo
 
-[![Desktop Lyrics for Android — real-time floating lyrics for Apple Music and Spotify](./docs/assets/desktop-lyrics-cover.jpg)](https://www.bilibili.com/video/BV1jNu66eEkr/)
+[![Desktop Lyrics for Android — real-time floating lyrics for Apple Music and Spotify](./docs/assets/desktop-lyrics-cover.png)](https://www.bilibili.com/video/BV1jNu66eEkr/)
 
 Watch on Bilibili: [Desktop Lyrics for Android — Apple Music / Spotify real-time floating lyrics](https://www.bilibili.com/video/BV1jNu66eEkr/).
 
