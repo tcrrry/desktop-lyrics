@@ -60,7 +60,7 @@
 
 ## 上传产物与正式发布
 
-云端会将独立 Debug 测试 APK 上传到 **v1.08 草稿 Release**，供本地接手下载；该草稿不是正式发布，也不会替换 `releases/latest` 的 1.07。APK 文件名 `Desktop-Lyrics-1.08-test-arm64-v8a.apk`，SHA-256：`f2e3b74713a8bdc7316b4677219f2980d834b32fa82f2fb782506455d8175e94`。如果草稿附件未上传成功，以 GitHub 实际资产列表为准，本地可以自行构建 Debug。
+云端已创建 **v1.08 草稿 Release**（Release ID `401509151`），不是正式发布，也不会替换 `releases/latest` 的 1.07。测试 APK 附件上传两次均返回 `HTTP 400: Bad Content-Length`，当前草稿**没有 APK 附件**，本地直接按上述命令构建即可。云端独立 Debug APK 文件名 `Desktop-Lyrics-1.08-test-arm64-v8a.apk`，SHA-256：`f2e3b74713a8bdc7316b4677219f2980d834b32fa82f2fb782506455d8175e94`。以 GitHub 实际资产列表为准；无需等待云端测试附件，也不用把 Debug 包作为正式下载附件。
 
 签名及检查完成后：
 
