@@ -20,8 +20,8 @@ android {
         applicationId = "com.tcrrry.desktoplyrics"
         minSdk = 26
         targetSdk = 34
-        versionCode = 107
-        versionName = "1.07"
+        versionCode = 108
+        versionName = "1.08"
 
         // Public APK targets modern Android phones. Keeping only 64-bit ARM
         // avoids packaging three unused copies of ML Kit's native translator.
@@ -63,6 +63,8 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")

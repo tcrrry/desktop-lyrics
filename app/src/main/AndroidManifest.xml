@@ -43,6 +43,17 @@
             </intent-filter>
         </service>
 
+        <service android:name=".LyricsTileService"
+            android:exported="true"
+            android:label="桌面歌词"
+            android:icon="@drawable/ic_lyrics_tile"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.ACTIVE_TILE" android:value="true" />
+        </service>
+
         <service
             android:name=".LyricsOverlayService"
             android:exported="false"

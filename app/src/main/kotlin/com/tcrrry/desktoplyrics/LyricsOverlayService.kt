@@ -105,6 +105,7 @@ class LyricsOverlayService : Service() {
     }
     private var overlayRotated = false
     private var backgroundMode = BACKGROUND_DEFAULT
+    private var lyricStrokeEnabled = false
     private var fontScalePercent = FONT_SCALE_DEFAULT_PERCENT
     private var lyricColor = LYRIC_COLOR_DEFAULT
     private var expandedBackgroundMode = BACKGROUND_DEFAULT
@@ -198,6 +199,15 @@ class LyricsOverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "com.tcrrry.desktoplyrics.REFRESH_MATCHES") {
             webView?.evaluateJavascript("window.LobstaOverlay?.refreshMatchManagement();", null)
+            return START_STICKY
+        }
+        if (intent?.action == ACTION_SET_READING_OPTIONS) {
+            if (overlayRoot == null) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            syncActiveVisualPreferences(displayedVisualTargetIsCompact())
+            applyReadingOptions()
             return START_STICKY
         }
         if (intent?.action == ACTION_STOP) {
@@ -353,6 +363,9 @@ class LyricsOverlayService : Service() {
     }
 
     private fun announceOverlayState() {
+        android.service.quicksettings.TileService.requestListeningState(
+            this, android.content.ComponentName(this, LyricsTileService::class.java)
+        )
         sendBroadcast(
             Intent(ACTION_STATE_CHANGED)
                 .setPackage(packageName)
@@ -1405,7 +1418,19 @@ class LyricsOverlayService : Service() {
         applyBackgroundMode()
     }
 
+    private fun applyReadingOptions() {
+        val stroke = lyricStrokeEnabled
+        val pronunciation = prefs.getBoolean(PREF_PRONUNCIATION_ENABLED, false)
+        webView?.evaluateJavascript(
+            "window.LobstaOverlay && (window.LobstaOverlay.setLyricStroke($stroke), " +
+                "window.LobstaOverlay.setPronunciationEnabled($pronunciation));", null
+        )
+    }
+
     private fun syncActiveVisualPreferences(targetCompact: Boolean) {
+        lyricStrokeEnabled = prefs.getBoolean(
+            if (targetCompact) PREF_LYRIC_STROKE_COMPACT else PREF_LYRIC_STROKE, false
+        )
         backgroundMode = if (targetCompact) compactBackgroundMode else expandedBackgroundMode
         fontScalePercent = if (targetCompact) compactFontScalePercent else expandedFontScalePercent
         lyricColor = if (targetCompact) compactLyricColor else expandedLyricColor
@@ -1462,6 +1487,7 @@ class LyricsOverlayService : Service() {
     }
 
     private fun applyLyricColor() {
+        applyReadingOptions()
         val encoded = JSONObject.quote(lyricColor)
         webView?.evaluateJavascript(
             "window.LobstaOverlay && window.LobstaOverlay.setLyricColor($encoded);",
@@ -1917,6 +1943,10 @@ class LyricsOverlayService : Service() {
         const val EXTRA_TRANSLATION_MODE = "translation_mode"
         const val EXTRA_RUNNING = "running"
         const val PREFS_NAME = "lyrics_overlay_prefs"
+        const val ACTION_SET_READING_OPTIONS = "com.tcrrry.desktoplyrics.SET_READING_OPTIONS"
+        const val PREF_PRONUNCIATION_ENABLED = "pronunciation_enabled_v1"
+        const val PREF_LYRIC_STROKE = "lyric_stroke_v1"
+        const val PREF_LYRIC_STROKE_COMPACT = "lyric_stroke_compact_v1"
         const val PREF_BACKGROUND_MODE = "background_mode"
         const val PREF_BACKGROUND_MODE_COMPACT = "background_mode_compact_v1"
         const val PREF_FONT_SCALE_PERCENT = "font_scale_percent"
