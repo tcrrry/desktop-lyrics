@@ -439,6 +439,16 @@
                 android:splitTrack="false"
                 android:thumbTint="#F7F7FA" />
 
+            <Button
+                android:id="@+id/btn_add_quick_tile"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_ui_pill"
+                android:text="添加下拉快捷磁贴"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp" />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -589,17 +599,42 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/lyric_color_custom"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="38dp"
                 android:layout_marginTop="7dp"
-                android:background="@drawable/bg_ui_pill"
-                android:fontFamily="sans-serif-medium"
-                android:gravity="center"
-                android:text="无级调色 · #FFFFFF"
-                android:textColor="#F7F7FA"
-                android:textSize="14sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="2">
+                    <TextView
+                        android:id="@+id/lyric_stroke"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="描"
+                        android:textColor="#FA2D48"
+                        android:textSize="12sp" />
+                </FrameLayout>
+                <TextView
+                    android:id="@+id/lyric_color_custom"
+                    android:layout_width="0dp"
+                    android:layout_weight="8"
+                    android:layout_marginStart="6dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_ui_pill"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:text="无级调色 · #FFFFFF"
+                    android:textColor="#F7F7FA"
+                    android:textSize="14sp" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -649,17 +684,51 @@
                     android:text="中文"
                     android:textColor="#9DA4B5"
                     android:textSize="12sp" />
-            </LinearLayout>
 
-            <Button
-                android:id="@+id/btn_supplement_translation"
-                style="@style/SettingsAction"
+            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="点击“音”独立开关发音；显示歌词源提供的罗马音／读音，无数据时保留原歌词"
+                android:textColor="#9CA3AF"
+                android:textSize="11sp" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="38dp"
                 android:layout_marginTop="7dp"
-                android:background="@drawable/bg_ui_pill"
-                android:text="补充翻译 · 语言包与 API"
-                android:textColor="#F7F7FA" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="2">
+                    <TextView
+                        android:id="@+id/pronunciation_enabled"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:contentDescription="开启发音显示"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="音"
+                        android:textColor="#FA2D48"
+                        android:textSize="12sp" />
+                </FrameLayout>
+                <Button
+                    android:id="@+id/btn_supplement_translation"
+                    style="@style/SettingsAction"
+                    android:layout_width="0dp"
+                    android:layout_weight="8"
+                    android:layout_marginStart="6dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_ui_pill"
+                    android:text="补充翻译 · 语言包与 API"
+                    android:textColor="#F7F7FA" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"

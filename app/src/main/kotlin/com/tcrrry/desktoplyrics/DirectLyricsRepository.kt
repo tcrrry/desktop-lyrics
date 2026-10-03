@@ -24,11 +24,14 @@ import java.util.concurrent.TimeUnit
  */
 class DirectLyricsRepository {
     private val latinTransliterator by lazy {
-        Transliterator.getInstance("Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC")
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            Transliterator.getInstance("Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC")
+        } else null
     }
     data class Result(
         val lyrics: String = "",
         val translatedLyrics: String = "",
+        val romanizedLyrics: String = "",
         val wordLyrics: String = "",
         val durationMs: Long = 0L,
         val cover: String = "",
@@ -42,6 +45,7 @@ class DirectLyricsRepository {
         private fun candidateJson(): JSONObject = JSONObject()
             .put("lyrics", lyrics)
             .put("translatedLyrics", translatedLyrics)
+            .put("romanizedLyrics", romanizedLyrics)
             .put("wordLyrics", wordLyrics)
             .put("duration", durationMs)
             .put("cover", cover)
@@ -66,6 +70,7 @@ class DirectLyricsRepository {
     private data class QqRichLyrics(
         val lineLyrics: String,
         val translatedLyrics: String,
+        val romanizedLyrics: String,
         val wordLyrics: String
     )
     private val identityCache = ConcurrentHashMap<String, ResolvedIdentity>()
@@ -420,9 +425,10 @@ class DirectLyricsRepository {
                         .getOrNull()
                 }
                 if (richLyrics != null && isUsableLyrics(richLyrics.lineLyrics)) {
-                    val result = Result(
+                    val result = OptionalQqPronunciation.enrich(Result(
                         lyrics = richLyrics.lineLyrics,
                         translatedLyrics = richLyrics.translatedLyrics,
+                        romanizedLyrics = richLyrics.romanizedLyrics,
                         wordLyrics = richLyrics.wordLyrics,
                         durationMs = song.optLong("interval", 0L) * 1000L,
                         cover = cover,
@@ -431,8 +437,8 @@ class DirectLyricsRepository {
                         title = song.optString("songname"),
                         artist = song.optJSONArray("singer").joinNames("name"),
                         score = score + 5
-                    )
-                onCandidate(result)
+                    ), { queryQqPronunciation(song.optLong("songid"), headers, song) }, onCandidate)
+
                 if (best == null || qualityRank(result) > qualityRank(best!!)) best = result
                 if (firstSong != null || !needsEnrichment(result)) return best
                 firstSong = song
@@ -448,9 +454,12 @@ class DirectLyricsRepository {
                     rejectedSongMids += songMid
                     continue
                 }
-                val result = Result(
+                val result = OptionalQqPronunciation.enrich(Result(
                     lyrics = lyrics,
                     translatedLyrics = unescapeHtml(lyricRoot?.optString("trans").orEmpty()),
+                    romanizedLyrics = runCatching {
+                        decodeQqRomanizedTrack(lyricRoot?.optString("roma").orEmpty())
+                    }.getOrDefault(""),
                     durationMs = song.optLong("interval", 0L) * 1000L,
                     cover = cover,
                     source = "QQ音乐",
@@ -458,8 +467,8 @@ class DirectLyricsRepository {
                     title = song.optString("songname"),
                     artist = song.optJSONArray("singer").joinNames("name"),
                     score = score + 5
-                )
-                onCandidate(result)
+                ), { queryQqPronunciation(song.optLong("songid"), headers, song) }, onCandidate)
+
                 if (best == null || qualityRank(result) > qualityRank(best!!)) best = result
                 if (firstSong != null || !needsEnrichment(result)) return best
                 firstSong = song
@@ -479,6 +488,7 @@ class DirectLyricsRepository {
                 "version" to "15",
                 "miniversion" to "82",
                 "lrctype" to "4",
+                "roma" to "1",
                 "musicid" to songId.toString()
             )
         )
@@ -503,8 +513,36 @@ class DirectLyricsRepository {
         return QqRichLyrics(
             lineLyrics = lineLyrics,
             translatedLyrics = translated,
+            romanizedLyrics = qqRomanizedLyrics(response),
             wordLyrics = if (hasWordTiming) qrcToCanonicalWordLyrics(original) else ""
         )
+    }
+
+    internal fun qqRomanizedLyrics(response: String): String = runCatching {
+        decodeQqRomanizedTrack(extractQqTrack(response, "contentroma"))
+    }.getOrDefault("")
+
+    internal fun decodeQqRomanizedTrack(payload: String): String =
+        payload.takeIf(String::isNotBlank)?.let(::decodeQqTrack)
+            ?.let(::extractQqLyricContent)?.let(::qrcToLineLrc).orEmpty()
+
+    private fun queryQqPronunciation(songId: Long, headers: Map<String, String>, song: JSONObject): String {
+        fun b64(text: String): String = java.util.Base64.getEncoder().encodeToString(text.toByteArray(Charsets.UTF_8))
+        val request = JSONObject().put("comm", JSONObject().put("ct", 19).put("cv", 2111))
+            .put("request", JSONObject().put("module", "music.musichallSong.PlayLyricInfo")
+                .put("method", "GetPlayLyricInfo").put("param", JSONObject()
+                    .put("songID", songId).put("songName", b64(song.optString("songname")))
+                    .put("singerName", b64(song.optJSONArray("singer").joinNames("name")))
+                    .put("albumName", b64(song.optString("albumname")))
+                    .put("interval", song.optLong("interval")).put("crypt", 1)
+                    .put("ct", 19).put("cv", 2111).put("type", 0)
+                    .put("qrc", 0).put("qrc_t", 0).put("lrc_t", 0)
+                    .put("trans", 0).put("trans_t", 0).put("roma", 1).put("roma_t", 0)))
+        val response = JSONObject(postText("https://u.y.qq.com/cgi-bin/musicu.fcg", headers,
+            request.toString().toByteArray(Charsets.UTF_8), "application/json; charset=UTF-8"))
+        val result = response.optJSONObject("request") ?: return ""
+        if (response.optInt("code", -1) != 0 || result.optInt("code", -1) != 0) return ""
+        return decodeQqRomanizedTrack(result.optJSONObject("data")?.optString("roma").orEmpty())
     }
 
     private fun extractQqTrack(response: String, tag: String): String {
@@ -663,6 +701,7 @@ class DirectLyricsRepository {
                 val result = Result(
                     lyrics = lyrics,
                     translatedLyrics = lyricRoot.optJSONObject("tlyric")?.optString("lyric").orEmpty(),
+                    romanizedLyrics = netEaseRomanizedLyrics(lyricRoot),
                     wordLyrics = lyricRoot.optJSONObject("yrc")?.optString("lyric")
                         .orEmpty()
                         .ifBlank { lyricRoot.optJSONObject("klyric")?.optString("lyric").orEmpty() },
@@ -685,6 +724,11 @@ class DirectLyricsRepository {
         }
         return null
     }
+
+    internal fun netEaseRomanizedLyrics(root: JSONObject): String =
+        sequenceOf("romalrc", "yromalrc", "rromalrc")
+            .map { root.optJSONObject(it)?.optString("lyric").orEmpty() }
+            .firstOrNull(String::isNotBlank)?.let(::qrcToLineLrc).orEmpty()
 
     private fun firstJsonMatch(
         array: JSONArray,
@@ -984,8 +1028,10 @@ class DirectLyricsRepository {
     }
 
     private fun latinSimilarity(first: String, second: String): Double {
-        val left = normalize(latinTransliterator.transliterate(first))
-        val right = normalize(latinTransliterator.transliterate(second))
+        val left = normalize(if (android.os.Build.VERSION.SDK_INT >= 29)
+            latinTransliterator?.transliterate(first) ?: first else first)
+        val right = normalize(if (android.os.Build.VERSION.SDK_INT >= 29)
+            latinTransliterator?.transliterate(second) ?: second else second)
         if (left.isBlank() || right.isBlank()) return 0.0
         if (left == right) return 1.0
         val distance = editDistance(left, right)
@@ -1055,6 +1101,7 @@ class DirectLyricsRepository {
         return confidenceBand * 100_000 +
         coverage(result.lyrics, result.translatedLyrics) * 200 +
         coverage(result.lyrics, result.wordLyrics) * 100 +
+        coverage(result.lyrics, result.romanizedLyrics) * 50 +
         result.score * 100 +
         lyricBodyScore(result.lyrics) +
         when (result.source) {
@@ -1123,10 +1170,14 @@ class DirectLyricsRepository {
         headers: Map<String, String>,
         fields: Map<String, String>
     ): String {
-        checkProvider(url)
         val body = fields.entries.joinToString("&") { (key, value) ->
             "${encode(key)}=${encode(value)}"
         }.toByteArray(Charsets.UTF_8)
+        return postText(url, headers, body, "application/x-www-form-urlencoded; charset=UTF-8")
+    }
+
+    private fun postText(url: String, headers: Map<String, String>, body: ByteArray, contentType: String): String {
+        checkProvider(url)
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
@@ -1135,7 +1186,7 @@ class DirectLyricsRepository {
             connection.instanceFollowRedirects = true
             connection.useCaches = false
             connection.doOutput = true
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+            connection.setRequestProperty("Content-Type", contentType)
             connection.setFixedLengthStreamingMode(body.size)
             headers.forEach(connection::setRequestProperty)
             connection.outputStream.use { it.write(body) }

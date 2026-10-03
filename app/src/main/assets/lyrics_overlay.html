@@ -245,8 +245,17 @@
     .line.past { color:rgba(var(--lyric-rgb),.24); }
     .line.loading,.line.empty { color:rgba(var(--lyric-rgb),.55); font-weight:620; }
     .line-original { display:block; }
-    .line-translation { display:block; margin-top:3px; color:rgba(var(--lyric-rgb),.66); font-size:.56em; line-height:1.3; font-weight:620; }
-    .line:not(.active) .line-translation { color:inherit; opacity:.78; }
+    body.lyric-stroke .line-original,body.lyric-stroke .line-translation,
+    body.lyric-stroke .line-pronunciation,body.lyric-stroke .compact-scroll-text {
+      /* Outline the composited glyphs so background-clipped karaoke fills stay visible. */
+      filter:drop-shadow(.65px 0 0 var(--lyric-stroke-color,#161616))
+        drop-shadow(-.65px 0 0 var(--lyric-stroke-color,#161616))
+        drop-shadow(0 .65px 0 var(--lyric-stroke-color,#161616))
+        drop-shadow(0 -.65px 0 var(--lyric-stroke-color,#161616));
+    }
+    .line-pronunciation,.line-translation { display:block; margin-top:3px; color:rgba(var(--lyric-rgb),.66); font-size:.56em; line-height:1.3; font-weight:620; }
+    .line-pronunciation { margin-top:0; margin-bottom:3px; }
+    .line:not(.active) .line-pronunciation,.line:not(.active) .line-translation { color:inherit; opacity:.78; }
     .word { color:inherit; }
     .line.active .word {
       color:transparent; background:linear-gradient(90deg,rgb(var(--lyric-rgb)) 0 var(--word-fill,0%),rgba(var(--lyric-rgb),.34) var(--word-fill,0%) 100%);
@@ -285,6 +294,12 @@
     }
     body.compact.compact-two .compact-line { padding-top:2px; padding-bottom:2px; }
     body.compact.compact-two .compact-next-line { display:block; }
+    .compact-pronunciation { display:none; width:100%; min-width:0; overflow:hidden; white-space:nowrap; }
+    .compact-pronunciation,.compact-next-line[data-translation="1"] {
+      color:rgba(var(--lyric-rgb),.66); font-size:calc(var(--compact-font-size)*.56);
+      line-height:1.3; font-weight:620;
+    }
+    body.compact.compact-three .compact-pronunciation { display:block; }
     .footer {
       display:grid; grid-template-columns:minmax(30px,auto) minmax(0,1fr) minmax(30px,auto);
       align-items:center; column-gap:8px; padding:0 1px;
@@ -459,6 +474,7 @@
     let backgroundMode = 'transparent';
     let lyricFontScale=1;
     let translationMode='bilingual';
+    let pronunciationEnabled=false;
     const playback = {
       hasSession:false, track:'', artist:'', album:'', state:'paused', positionMs:0,
       durationMs:0, speed:0, receivedAt:performance.now(), key:'', lyrics:[], active:-1,
@@ -480,7 +496,7 @@
     let supplementInFlight=false;
     let supplementWindowEnd=-1;
     let supplementPrefetchRemaining=4;
-    const LYRICS_CACHE_SCHEMA=3;
+    const LYRICS_CACHE_SCHEMA=4;
     const supplementChip=$('supplement-chip');
 
     function requestSupplement(reset=true) {
@@ -639,7 +655,7 @@
       return lines.sort((a,b)=>a.t-b.t);
     }
 
-    function attachTranslations(lines,raw) {
+    function attachTranslations(lines,raw,field="translation") {
       if(!lines.length||!raw)return lines;
       const translations=parseLrc(raw);
       if(!translations.length)return lines;
@@ -647,8 +663,12 @@
       return lines.map(line=>{
         while(cursor+1<translations.length&&Math.abs(translations[cursor+1].t-line.t)<=Math.abs(translations[cursor].t-line.t))cursor++;
         const match=translations[cursor];
-        return {...line,translation:match&&Math.abs(match.t-line.t)<=1200?match.text:''};
+        return {...line,[field]:match&&Math.abs(match.t-line.t)<=1200?match.text:''};
       });
+    }
+
+    function compactSupplement(line) {
+      return translationMode==='bilingual' ? line.translation||'' : '';
     }
 
     function linePrimaryText(line) {
@@ -663,7 +683,9 @@
       const translation=translationMode==='bilingual'&&line.translation
         ? '<span class="line-translation">'+escapeHtml(line.translation)+'</span>'
         : '';
-      return '<span class="line-original">'+original+'</span>'+translation;
+      const pronunciation=pronunciationEnabled&&line.pronunciation
+        ? '<span class="line-pronunciation">'+escapeHtml(line.pronunciation)+'</span>' : '';
+      return pronunciation+'<span class="line-original">'+original+'</span>'+translation;
     }
 
     function renderLyrics(lines, message) {
@@ -775,8 +797,9 @@
     function setCompactLyric(text, animate, followingText, currentTimeBudget, timedLine, secondaryIsTranslation) {
       const value = String(text || '暂无歌词');
       const following = String(followingText || '').trim();
+      const reading=pronunciationEnabled&&timedLine?String(timedLine.pronunciation||'').trim():'';
       const timingKey=timedLine&&Array.isArray(timedLine.words)&&timedLine.words.length?String(timedLine.t):'';
-      const key = value + '\u0000' + following + '\u0000' + timingKey +
+      const key = value + '\u0000' + following + '\u0000' + reading + '\u0000' + timingKey +
         '\u0000' + (secondaryIsTranslation?'translation':'candidate');
       if (key === compactLineKey && ui.compactLyric.children.length) {
         const current = ui.compactLyric.querySelector('.compact-line.current');
@@ -784,6 +807,8 @@
         if (currentViewport) setCompactTiming(currentViewport, .75, currentTimeBudget);
         const secondaryViewport=current&&current.querySelector('.compact-next-line[data-translation="1"]');
         if(secondaryViewport)setCompactTiming(secondaryViewport,.65,currentTimeBudget);
+        const readingViewport=current&&current.querySelector('.compact-pronunciation');
+        if(readingViewport)setCompactTiming(readingViewport,.65,currentTimeBudget);
         updateCompactMarquees();
         return;
       }
@@ -793,8 +818,12 @@
       const previous = ui.compactLyric.querySelector('.compact-line.current');
       const next = document.createElement('div');
       next.className = 'compact-line' + (animate && previous ? '' : ' current no-transition');
+      if(reading) {
+        next.classList.add('has-pronunciation');
+        next.appendChild(compactTextNode('compact-pronunciation',reading,.65,currentTimeBudget));
+      }
       next.appendChild(compactTextNode('compact-line-text', value, .75, currentTimeBudget, timedLine));
-      if (following) {
+      if (following && (!reading || secondaryIsTranslation)) {
         const secondary=compactTextNode(
           'compact-next-line',
           following,
@@ -807,6 +836,7 @@
 
       if (!animate || !previous) {
         ui.compactLyric.replaceChildren(next);
+        updateCompactLayout();
         requestAnimationFrame(() => {
           next.classList.remove('no-transition');
           updateCompactMarquees();
@@ -821,6 +851,7 @@
         previous.classList.remove('current');
         previous.classList.add('outgoing');
         next.classList.add('current');
+        updateCompactLayout();
         updateCompactMarquees();
       });
       compactCleanupTimer = setTimeout(() => {
@@ -898,13 +929,14 @@
       const lineBudget=playback.durationMs>0
         ? Math.max(.1,(1-(scaled-index))*playback.durationMs/playback.lyrics.length/1000/rate)
         : 0;
-      const hasTranslation=translationMode==='bilingual'&&!!line.translation;
+      const supplement=compactSupplement(line);
+      const hasTranslation=!!supplement;
       setCompactLyric(
         linePrimaryText(line),
         document.body.classList.contains('compact'),
-        hasTranslation?line.translation:(playback.lyrics[index+1]?linePrimaryText(playback.lyrics[index+1]):''),
+        hasTranslation?supplement:(playback.lyrics[index+1]?linePrimaryText(playback.lyrics[index+1]):''),
         lineBudget,
-        null,
+        line,
         hasTranslation
       );
       maybePrefetchSupplement();
@@ -1124,9 +1156,10 @@
         const currentTimeBudget = !lines[index].plain && lineEnd > position
           ? (lineEnd - position) / 1000 / playbackRate
           : 0;
-        const compactHasTranslation=translationMode==='bilingual'&&!!lines[index].translation;
+        const supplement=compactSupplement(lines[index]);
+        const compactHasTranslation=!!supplement;
         const compactSecondary=compactHasTranslation
-          ? lines[index].translation
+          ? supplement
           : (lines[index + 1] ? linePrimaryText(lines[index + 1]) : '');
         setCompactLyric(
           linePrimaryText(lines[index]),
@@ -1242,6 +1275,7 @@
           schema:LYRICS_CACHE_SCHEMA,
           lyrics:isUsableLyricPayload(value.lyrics)?value.lyrics:'',
           translatedLyrics:isUsableLyricPayload(value.translatedLyrics)?value.translatedLyrics:'',
+          romanizedLyrics:isUsableLyricPayload(value.romanizedLyrics)?value.romanizedLyrics:'',
           wordLyrics:isUsableLyricPayload(value.wordLyrics)?value.wordLyrics:'',
           duration:Number(value.duration || 0), cover:value.cover || '', source:value.source || '',
           alternatives:Array.isArray(value.alternatives)?value.alternatives.slice(0,3):[],
@@ -1265,7 +1299,7 @@
 
     function lyricsCandidateSignature(candidates) {
       return candidates.map(candidate=>[
-        candidate.source||'',candidate.lyrics||'',candidate.translatedLyrics||'',candidate.wordLyrics||''
+        candidate.source||'',candidate.lyrics||'',candidate.translatedLyrics||'',candidate.wordLyrics||'',candidate.romanizedLyrics||''
       ].join('\u0000')).join('\u0001');
     }
 
@@ -1328,7 +1362,9 @@
           const previous=prior.alternatives||[];
           data.alternatives=data.alternatives.map(c=>{
             const old=previous.find(x=>x.source===c.source&&x.recordId&&x.recordId===c.recordId);
-            return old&&completeWordLyrics(old,parseLrc(old.lyrics)).length&&!completeWordLyrics(c,parseLrc(c.lyrics)).length?old:c;
+            if(!old)return c;
+            const retained=completeWordLyrics(old,parseLrc(old.lyrics)).length&&!completeWordLyrics(c,parseLrc(c.lyrics)).length?old:c;
+            return {...retained,romanizedLyrics:c.romanizedLyrics||old.romanizedLyrics||''};
           });
         }
         saveLyrics(playback.key, data);
@@ -1422,10 +1458,10 @@
       const plainMode=!wordTimed.length&&!lineTimed.length;
       const base=wordTimed.length?wordTimed:(lineTimed.length?lineTimed:plainLyrics(data.lyrics));
       ui.lyrics.classList.toggle('plain-mode',plainMode);
-      renderLyrics(attachTranslations(base,data.translatedLyrics),data.lyrics?'':'暂未匹配到歌词');
+      renderLyrics(attachTranslations(attachTranslations(base,data.translatedLyrics),data.romanizedLyrics,"pronunciation"),data.lyrics?'':'暂未匹配到歌词');
       if((!playback.durationMs||playback.durationMs<1000)&&Number(data.duration)>0)playback.durationMs=Number(data.duration);
       if(data.cover)setCover(data.cover,false);
-      const capabilities=(wordTimed.length?' · 逐字':'')+(plainMode?' · 无时间轴':'')+(currentHasOfficialTranslation?' · 译':'');
+      const capabilities=(wordTimed.length?' · 逐字':'')+(plainMode?' · 无时间轴':'')+(currentHasOfficialTranslation?' · 译':'')+(parseLrc(data.romanizedLyrics).length?' · 音':'');
       ui.source.textContent=(data.source||'歌词源')+capabilities+(playback.candidates.length>1?' ▾':'');
       ui.source.title=playback.candidates.length>1?'点击切换歌词源':'当前歌词源';
       updateInfoMarquee(true);
@@ -1891,9 +1927,13 @@
       }, 180);
     }
     function updateCompactLayout() {
+      const line=ui.compactLyric.querySelector('.compact-line.current');
+      const smallLine=30*.56*1.3;
+      // Preserve 1.07's one/two-line height boundary and add a third auxiliary row.
       const twoLineMinimum=Math.ceil(7+(30*1.15+23*1.15)*lyricFontScale);
-      const twoLines = document.body.classList.contains('compact') && innerHeight >= twoLineMinimum;
-      document.body.classList.toggle('compact-two', twoLines);
+      const compact=document.body.classList.contains('compact');
+      document.body.classList.toggle('compact-two',compact&&innerHeight>=twoLineMinimum);
+      document.body.classList.toggle('compact-three',compact&&pronunciationEnabled&&!!line?.classList.contains('has-pronunciation')&&innerHeight>=Math.ceil(7+(30*1.15+23*1.15+smallLine)*lyricFontScale));
     }
 
     function setFontScale(percent) {
@@ -1924,12 +1964,23 @@
       receiveLyrics,
       receiveRemoteCover,
       setFontScale,
+      setPronunciationEnabled(value) {
+        const next=!!value;
+        if(next===pronunciationEnabled)return;
+        pronunciationEnabled=next;
+        if(playback.candidates.length)applyCandidate(playback.candidateIndex);
+      },
+      setLyricStroke(value) {
+        document.body.classList.toggle('lyric-stroke',!!value);
+      },
       setLyricColor(value) {
         const match=String(value||'').trim().match(/^#([0-9a-f]{6})$/i);
         if(!match)return;
         const hex=match[1];
         const rgb=[0,2,4].map(index=>parseInt(hex.slice(index,index+2),16));
         document.documentElement.style.setProperty('--lyric-rgb',rgb.join(','));
+        const luminance=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+        document.documentElement.style.setProperty('--lyric-stroke-color',luminance>128?'#161616':'#f5f5f5');
       },
       setLyricOffset(value) {
         playback.lyricOffsetMs=Math.max(-5000,Math.min(5000,Number(value)||0));

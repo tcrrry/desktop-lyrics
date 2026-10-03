@@ -39,6 +39,7 @@ Android floating lyrics overlay with MediaSession playback detection, synchroniz
 - 收起形态按每句时长单向滚动；双行时下一句保持静止
 - 展开歌词可手动惯性滚动；点击任意带时间轴的歌词即可跳转，停止操作后自动恢复实时跟随
 - 歌词字号支持 35%–150%，最小窗口高度随字号动态变化
+- 新增发音独立开关，读取 QQ／网易云提供的罗马音；支持歌词对比色描边，以及下拉快捷设置磁贴开关悬浮窗
 - 歌词支持颜色预设、全色域无级调色与 ±5 秒同步偏移；偏移会按歌曲和歌词源分别记忆，并可集中管理
 - 没有时间轴的纯文本歌词也能按歌曲进度平滑滚动，并明确标注“无时间轴歌词”
 - 缺少官方译文时可选择离线机翻，语言包按需下载与删除；也可配置兼容 Chat Completions 的 DeepSeek、智谱 GLM、Gemini 或其他 HTTPS API
@@ -100,6 +101,12 @@ Android floating lyrics overlay with MediaSession playback detection, synchroniz
 
 如需生成签名 APK，将 `keystore.properties.example` 复制为 `keystore.properties`，然后填写自己的签名信息。真实密钥与密码已被 `.gitignore` 排除。
 
+### 1.08 新增入口
+
+- “描边”位于无级调色左侧，“发音”位于补充翻译左侧，两行均按 2:8 分配空间。关闭时是白色圆按钮，开启时以红白动画变为红色胶囊；两个按钮尺寸一致。
+- 发音来自 QQ／网易云平台的发音轨，不把中文翻译当成发音，也不自动生成无依据的读音。展开与全屏按发音、原文、译文排列；发音与译文同字号、同亮度，突出原文。收起窗口足够高时采用相同三层排布，两行高度保留原文与译文，一行高度只显示主歌词；关闭发音时最多两行；无发音时保留原双行行为。
+- 点击“添加下拉快捷磁贴”，或下拉系统快捷面板进入编辑，把“桌面歌词”拖入面板。首次使用需先授予通知使用权与悬浮窗权限。
+
 ## 常见问题
 
 ### 它会录制或分析手机正在播放的声音吗？
@@ -120,7 +127,7 @@ Android floating lyrics overlay with MediaSession playback detection, synchroniz
 
 ## 项目信息
 
-- 当前正式版：`1.06`（versionCode 106）
+- 当前正式版：`1.08`（versionCode 108），使用与 1.07 相同的原 Release 签名；下载见 Releases
 - Android 包名：`com.tcrrry.desktoplyrics`
 - 作者：B站 `@Tcrrrry`
 

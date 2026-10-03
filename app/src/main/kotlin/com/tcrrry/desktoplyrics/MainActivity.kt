@@ -43,6 +43,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var backgroundModeHigh: TextView
     private lateinit var settingsTargetExpanded: TextView
     private lateinit var settingsTargetCompact: TextView
+    private lateinit var lyricStroke: TextView
+    private lateinit var pronunciationButton: TextView
+    private val optionAnimators = mutableMapOf<TextView, android.animation.ValueAnimator>()
     private lateinit var seekFontSize: SeekBar
     private lateinit var fontSizeValue: TextView
     private lateinit var seekLyricOffset: SeekBar
@@ -89,6 +92,40 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, LyricOffsetMemoryActivity::class.java))
         }
 
+        lyricStroke = findViewById(R.id.lyric_stroke)
+        pronunciationButton = findViewById(R.id.pronunciation_enabled)
+        lyricStroke.setOnClickListener {
+            val checked = !overlayPrefs.getBoolean(strokePreferenceKey(), false)
+            overlayPrefs.edit().putBoolean(strokePreferenceKey(), checked).apply()
+            updateOptionPill(lyricStroke, checked, "描", "描边", "歌词描边", animate = true)
+            refreshReadingOptions()
+        }
+        pronunciationButton.setOnClickListener {
+            val checked = !overlayPrefs.getBoolean(LyricsOverlayService.PREF_PRONUNCIATION_ENABLED, false)
+            overlayPrefs.edit().putBoolean(LyricsOverlayService.PREF_PRONUNCIATION_ENABLED, checked).apply()
+            updatePronunciationButton(animate = true)
+            refreshReadingOptions()
+        }
+        findViewById<Button>(R.id.btn_add_quick_tile).setOnClickListener {
+            if (Build.VERSION.SDK_INT >= 33) {
+                getSystemService(android.app.StatusBarManager::class.java).requestAddTileService(
+                    android.content.ComponentName(this, LyricsTileService::class.java),
+                    "桌面歌词", android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_lyrics_tile),
+                    mainExecutor
+                ) { result ->
+                    runOnUiThread {
+                        val message = when (result) {
+                            android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED -> "已添加桌面歌词快捷磁贴"
+                            android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED -> "快捷磁贴已添加"
+                            else -> "可在下拉快捷面板的编辑页面添加“桌面歌词”"
+                        }
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } else {
+                Toast.makeText(this, "下拉快捷面板，点击编辑，将“桌面歌词”拖入面板", Toast.LENGTH_LONG).show()
+            }
+        }
         btnOverlay = findViewById(R.id.btn_overlay)
         btnOverlayPermission = findViewById(R.id.btn_overlay_permission)
         btnListenerPermission = findViewById(R.id.btn_listener_permission)
@@ -196,6 +233,7 @@ class MainActivity : AppCompatActivity() {
 
         updateSettingsTargetUi()
         updateBackgroundModeUi()
+        updateReadingOptionsUi()
         updateFontSizeUi()
         seekFontSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -258,6 +296,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        optionAnimators.values.forEach { it.cancel() }
         if (overlayStateReceiverRegistered) {
             unregisterReceiver(overlayStateReceiver)
             overlayStateReceiverRegistered = false
@@ -270,6 +309,7 @@ class MainActivity : AppCompatActivity() {
         if (::tvOverlayStatus.isInitialized) {
             updateOverlayUi()
             updateBackgroundModeUi()
+            updateReadingOptionsUi()
             updateFontSizeUi()
             updateLyricOffsetUi()
             updateTranslationModeUi()
@@ -599,11 +639,73 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun strokePreferenceKey(): String = if (settingsTargetIsCompact) {
+        LyricsOverlayService.PREF_LYRIC_STROKE_COMPACT
+    } else LyricsOverlayService.PREF_LYRIC_STROKE
+
+    private fun updateReadingOptionsUi() {
+        updateOptionPill(lyricStroke, overlayPrefs.getBoolean(strokePreferenceKey(), false),
+            "描", "描边", "歌词描边", animate = false)
+        updatePronunciationButton(animate = false)
+    }
+
+    private fun updatePronunciationButton(animate: Boolean) {
+        updateOptionPill(pronunciationButton,
+            overlayPrefs.getBoolean(LyricsOverlayService.PREF_PRONUNCIATION_ENABLED, false),
+            "音", "发音", "发音显示", animate)
+    }
+
+    private fun updateOptionPill(button: TextView, checked: Boolean, shortText: String,
+                                 fullText: String, description: String, animate: Boolean) {
+        optionAnimators.remove(button)?.cancel()
+        val shape = button.background as? GradientDrawable ?: GradientDrawable().also {
+            button.background = it
+        }
+        shape.cornerRadius = 999f
+        val red = Color.parseColor("#FA2D48")
+        val density = resources.displayMetrics.density
+        val targetWidth = ((if (checked) 52 else 32) * density).toInt()
+        val fromWidth = button.layoutParams.width
+        val fromColor = button.currentTextColor
+        val toColor = if (checked) Color.WHITE else red
+        val fromBackground = shape.color?.defaultColor ?: Color.WHITE
+        val toBackground = if (checked) red else Color.WHITE
+        button.text = if (checked) fullText else shortText
+        button.contentDescription = (if (checked) "关闭" else "开启") + description
+        button.isSelected = checked
+        if (Build.VERSION.SDK_INT >= 30) button.stateDescription = if (checked) "已开启" else "已关闭"
+        val evaluator = android.animation.ArgbEvaluator()
+        fun applyFrame(fraction: Float) {
+            button.layoutParams = button.layoutParams.apply {
+                width = (fromWidth + (targetWidth - fromWidth) * fraction).toInt()
+            }
+            shape.setColor(evaluator.evaluate(fraction, fromBackground, toBackground) as Int)
+            button.setTextColor(evaluator.evaluate(fraction, fromColor, toColor) as Int)
+        }
+        if (animate) {
+            optionAnimators[button] = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 220
+                interpolator = android.view.animation.DecelerateInterpolator()
+                addUpdateListener { applyFrame(it.animatedValue as Float) }
+                start()
+            }
+        } else applyFrame(1f)
+    }
+
+    private fun refreshReadingOptions() {
+        if (LyricsOverlayService.isRunning) {
+            startService(Intent(this, LyricsOverlayService::class.java).apply {
+                action = LyricsOverlayService.ACTION_SET_READING_OPTIONS
+            })
+        }
+    }
+
     private fun setSettingsTarget(compact: Boolean) {
         if (settingsTargetIsCompact == compact) return
         settingsTargetIsCompact = compact
         updateSettingsTargetUi()
         updateBackgroundModeUi()
+        updateReadingOptionsUi()
         updateFontSizeUi()
         updateLyricColorUi()
     }
