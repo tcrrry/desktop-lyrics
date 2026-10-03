@@ -45,7 +45,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settingsTargetCompact: TextView
     private lateinit var lyricStroke: TextView
     private lateinit var pronunciationButton: TextView
-    private val optionAnimators = mutableMapOf<TextView, android.animation.ValueAnimator>()
     private lateinit var seekFontSize: SeekBar
     private lateinit var fontSizeValue: TextView
     private lateinit var seekLyricOffset: SeekBar
@@ -97,13 +96,13 @@ class MainActivity : AppCompatActivity() {
         lyricStroke.setOnClickListener {
             val checked = !overlayPrefs.getBoolean(strokePreferenceKey(), false)
             overlayPrefs.edit().putBoolean(strokePreferenceKey(), checked).apply()
-            updateOptionPill(lyricStroke, checked, "描", "描边", "歌词描边", animate = true)
+            updateOptionPill(lyricStroke, checked, "歌词描边")
             refreshReadingOptions()
         }
         pronunciationButton.setOnClickListener {
             val checked = !overlayPrefs.getBoolean(LyricsOverlayService.PREF_PRONUNCIATION_ENABLED, false)
             overlayPrefs.edit().putBoolean(LyricsOverlayService.PREF_PRONUNCIATION_ENABLED, checked).apply()
-            updatePronunciationButton(animate = true)
+            updatePronunciationButton()
             refreshReadingOptions()
         }
         findViewById<Button>(R.id.btn_add_quick_tile).setOnClickListener {
@@ -296,7 +295,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        optionAnimators.values.forEach { it.cancel() }
         if (overlayStateReceiverRegistered) {
             unregisterReceiver(overlayStateReceiver)
             overlayStateReceiverRegistered = false
@@ -644,52 +642,19 @@ class MainActivity : AppCompatActivity() {
     } else LyricsOverlayService.PREF_LYRIC_STROKE
 
     private fun updateReadingOptionsUi() {
-        updateOptionPill(lyricStroke, overlayPrefs.getBoolean(strokePreferenceKey(), false),
-            "描", "描边", "歌词描边", animate = false)
-        updatePronunciationButton(animate = false)
+        updateOptionPill(lyricStroke, overlayPrefs.getBoolean(strokePreferenceKey(), false), "歌词描边")
+        updatePronunciationButton()
     }
 
-    private fun updatePronunciationButton(animate: Boolean) {
+    private fun updatePronunciationButton() {
         updateOptionPill(pronunciationButton,
-            overlayPrefs.getBoolean(LyricsOverlayService.PREF_PRONUNCIATION_ENABLED, false),
-            "音", "发音", "发音显示", animate)
+            overlayPrefs.getBoolean(LyricsOverlayService.PREF_PRONUNCIATION_ENABLED, false), "发音显示")
     }
 
-    private fun updateOptionPill(button: TextView, checked: Boolean, shortText: String,
-                                 fullText: String, description: String, animate: Boolean) {
-        optionAnimators.remove(button)?.cancel()
-        val shape = button.background as? GradientDrawable ?: GradientDrawable().also {
-            button.background = it
-        }
-        shape.cornerRadius = 999f
-        val red = Color.parseColor("#FA2D48")
-        val density = resources.displayMetrics.density
-        val targetWidth = ((if (checked) 52 else 32) * density).toInt()
-        val fromWidth = button.layoutParams.width
-        val fromColor = button.currentTextColor
-        val toColor = if (checked) Color.WHITE else red
-        val fromBackground = shape.color?.defaultColor ?: Color.WHITE
-        val toBackground = if (checked) red else Color.WHITE
-        button.text = if (checked) fullText else shortText
-        button.contentDescription = (if (checked) "关闭" else "开启") + description
+    private fun updateOptionPill(button: TextView, checked: Boolean, description: String) {
         button.isSelected = checked
+        button.contentDescription = (if (checked) "关闭" else "开启") + description
         if (Build.VERSION.SDK_INT >= 30) button.stateDescription = if (checked) "已开启" else "已关闭"
-        val evaluator = android.animation.ArgbEvaluator()
-        fun applyFrame(fraction: Float) {
-            button.layoutParams = button.layoutParams.apply {
-                width = (fromWidth + (targetWidth - fromWidth) * fraction).toInt()
-            }
-            shape.setColor(evaluator.evaluate(fraction, fromBackground, toBackground) as Int)
-            button.setTextColor(evaluator.evaluate(fraction, fromColor, toColor) as Int)
-        }
-        if (animate) {
-            optionAnimators[button] = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 220
-                interpolator = android.view.animation.DecelerateInterpolator()
-                addUpdateListener { applyFrame(it.animatedValue as Float) }
-                start()
-            }
-        } else applyFrame(1f)
     }
 
     private fun refreshReadingOptions() {
