@@ -100,7 +100,7 @@ To build a signed APK, copy `keystore.properties.example` to `keystore.propertie
 
 ## Project information
 
-- Development version: `1.08` (versionCode 108); original signing and device verification pending. See Releases for the published version.
+- Current release: `1.08` (versionCode 108), signed with the same original release certificate as 1.07. See Releases for the APK.
 - Android package: `com.tcrrry.desktoplyrics`
 - Author: Bilibili `@Tcrrrry`
 

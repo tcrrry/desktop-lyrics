@@ -101,8 +101,6 @@ Android floating lyrics overlay with MediaSession playback detection, synchroniz
 
 如需生成签名 APK，将 `keystore.properties.example` 复制为 `keystore.properties`，然后填写自己的签名信息。真实密钥与密码已被 `.gitignore` 排除。
 
-本地 Codex 继续签名与发布 1.08：先阅读[本地接手与发布说明](docs/local-handoff-1.08.md)。
-
 ### 1.08 新增入口
 
 - “描边”位于无级调色左侧，“发音”位于补充翻译左侧，两行均按 2:8 分配空间。关闭时是白色圆按钮，开启时以红白动画变为红色胶囊；两个按钮尺寸一致。
@@ -129,7 +127,7 @@ Android floating lyrics overlay with MediaSession playback detection, synchroniz
 
 ## 项目信息
 
-- 开发版本：`1.08`（versionCode 108），待完成原签名打包与真机验证；当前正式版见 Releases
+- 当前正式版：`1.08`（versionCode 108），使用与 1.07 相同的原 Release 签名；下载见 Releases
 - Android 包名：`com.tcrrry.desktoplyrics`
 - 作者：B站 `@Tcrrrry`
 

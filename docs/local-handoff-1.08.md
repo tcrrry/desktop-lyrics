@@ -31,7 +31,7 @@
 
 ## 已完成的验证
 
-- JDK 17 + Android SDK 34 下 `assembleDebug assembleRelease testDebugUnitTest lint` 通过；Release 云端构建未签名。
+- JDK 17 + Android SDK 34 下 `assembleRelease testDebugUnitTest lint` 在本地再次通过；正式 Release 已使用原密钥签名。
 - `PlatformPronunciationTest` 9 项单元测试全部通过，覆盖平台轨解析、QRC 时间戳、持久化、备用接口失败与提前交付。
 - `node tests/match-memory.test.cjs`、`node tests/readability.test.cjs` 通过。
 - Chromium 实际运行 WebView 页面，验证发音开关、时间对齐、HTML 转义、逐字高亮与描边共存、发音／翻译同亮度，以及收起一／二／三行可见性。浏览器检查为云端临时脚本，仓库保留 Node 回归测试与预览图，未把浏览器脚本作为可复用测试上传。
@@ -39,7 +39,7 @@
 - `docs/assets/1.08-expanded-preview.png`、`1.08-compact-preview.png`、`1.08-white-background-preview.png` 为浏览器预览，不是真机截图。
 - Debug 测试 APK 签名验证通过；包名 `com.tcrrry.desktoplyrics.dev`，版本 `1.08-test`，可与正式版共存。
 
-**尚未完成**：原 Release 签名打包、与 1.07 的签名一致性检查、手机运行验证以及正式发布。没有宣称快捷磁贴已在 vivo 真机测试通过。
+**本地发布收尾**：正式 APK 的签名证书 SHA-256 已确认与 GitHub 1.07 APK 完全一致，生产包名、1.08 版本号和 arm64-v8a 架构均已核对。发布时没有 ADB 设备在线，因此没有新增 vivo 真机验证结论，也没有宣称快捷磁贴已在 vivo 真机测试通过。
 
 ## 本地接手步骤
 
